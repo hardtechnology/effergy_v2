@@ -8,7 +8,7 @@
 #include <ArduinoJson.h>          // Version 6.x https://github.com/bblanchon/ArduinoJson
 
 #define limit 67      //67 for E2 Classic - bits to Rx from Tx
-#define BUFFERSIZE 2048
+#define BUFFERSIZE 4096
 
 class efergy {
 	public:
