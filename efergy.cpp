@@ -444,7 +444,7 @@ void efergy::PrintJSON_IDinfo() {
 void efergy::IDinfo_monitor() {
 	if ( int(_IDinfo.memoryUsage()) > int( BUFFERSIZE * .9) ) {
 		eflog("[INFO] Performing Garbage Collection",true);
-		_IDinfo.garbageCollect();
+		_IDinfo.garbageCollect();  // Defragment JSON buffer
 		if ( int(_IDinfo.memoryUsage()) > int( BUFFERSIZE * .8) ) {
 			eflog("[WARN] Buffer size - reduce depth, increase Tx Interval.",true);
 			for (int arri = 0; arri < _IDinfo["log"].size(); arri++) {
