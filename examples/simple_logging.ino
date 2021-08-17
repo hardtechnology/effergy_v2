@@ -16,7 +16,7 @@ efergy Efergymon(inpin,DEBUG,voltage);  // Define Efergy Module to look after ra
 void setup() {
   Efergymon.begin(74880);
   //setID (int id, int depth, unsigned long statusmA, int intervalsecs)
-  Efergymon.setID(2526,20,80,60);  // Washing Machine - depth of 20 records (@6 seconds = 2 minutes), On is considered over 80mA, report every 60 sec
+  Efergymon.setID(12345,20,80,60);  // Washing Machine - depth of 20 records (@6 seconds = 2 minutes), On is considered over 80mA, report every 60 sec
 }
 
 void loop() {
@@ -24,7 +24,7 @@ void loop() {
     if (bool(Efergymon.getjsonevent()["changed"])) {
       bool tx_status = bool(Efergymon.getjsonevent()["status"]);
       int tx_id = int(Efergymon.getjsonevent()["id"]);
-      if (tx_id == 2526) {  //Washing Machine
+      if (tx_id == 12345) {  //Washing Machine
         if ( !tx_status ) {
           Efergymon.eflog("Washing has finished.",true);
         } else {
