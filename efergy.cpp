@@ -27,9 +27,9 @@ unsigned long _incomingtime[limit];  //stores processing time for eac
 int _bytecount;
 
 
-efergy::efergy(int inputpin, int _debug, int volts) {
+efergy::efergy(int inputpin, int debug, int volts) {
 	_rxpin = inputpin;
-	_debug = _debug;
+	_debug = debug;
 	_voltage = volts;
 }
 
