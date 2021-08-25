@@ -38,7 +38,7 @@ void efergy::begin(int baudrate) {
 	Serial.begin(baudrate);  // Setup Serial Port to allow for logging -74880 is for esp8266 compatibility
 	milliswait(1500);  // This ensures our serial has had time to get ready
 	if (_debug) {
-		eflog("_debug=ON - T=Timeout, S=Start, b=bit, o=Rxtimeout, L=loop routine, E=End of Packet", true);
+		eflog("DEBUG IS ON - T=Timeout, S=Start, b=bit, o=Rxtimeout, L=loop routine, E=End of Packet", true);
 	}
 	eflog("Efergy Monitor has intitialized.",true);
 }
@@ -146,15 +146,21 @@ bool efergy::RXdecodeB(unsigned char _bytearray[8]) {
 }
 
 // Decode the Checksum from the received packet
-bool efergy::RXdecodeCS(unsigned char bytes[]) {
+bool efergy::RXdecodeCS(unsigned char CSbytes[]) {
 	unsigned char tbyte = 0;
 	bool OK1 = false;
 	for (int cs = 0; cs < 7; cs++) {
-		tbyte += bytes[cs];
+		tbyte += CSbytes[cs];
 	}
 	tbyte &= 0xff;
-	if ( tbyte == bytes[7] ) {
-		if ( bytes[0] == 7 || bytes[0] == 9 ) {
+	if (_debug > 3) {
+		Serial.print("CheckSum Calc=");
+		Serial.print(tbyte);
+		Serial.print(" RX Checksum=");
+		Serial.println(CSbytes[7]);
+	}
+	if ( tbyte == CSbytes[7] ) {
+		if ( CSbytes[0] == 7 || CSbytes[0] == 9 ) {
 			OK1 = true;
 		}
 	}
@@ -208,10 +214,11 @@ void efergy::Serial_BitTimes(int z) {
 }
 
 // Dump out the raw byte array to the Serial port (used for debugging)
-void efergy::Serial_RAW(unsigned char bytes[]) {
-	if (!RXdecodeCS(bytes)) {
-		char buf[40];
-		sprintf(buf, "{\"RAW\":[%d,%d,%d,%d,%d,%d,%d,%d]}", bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]);
+void efergy::Serial_RAW(unsigned char Rbytes[]) {
+	// if (!RXdecodeCS(Rbytes)) {
+	if (true) {
+		char buf[64];
+		sprintf(buf, "{\"RAW\":[%d,%d,%d,%d,%d,%d,%d,%d]}", Rbytes[0], Rbytes[1], Rbytes[2], Rbytes[3], Rbytes[4], Rbytes[5], Rbytes[6], Rbytes[7]);
 		Serial.print(buf);
 	}
 }
@@ -237,48 +244,46 @@ unsigned long efergy::Efergy_pulseIn(uint8_t pin, uint8_t state, unsigned long t
 	return clockCyclesToMicroseconds(get_ccount() - pulse_start_cycle_count);
 }
 
-
-
-
 bool efergy::mainloop() {
   //Loop through and store the high pulse length
   int flag = false;
   int p = 0;
-  int prevlength = 0;
   int bytecount;
   char tempbuff[60]; //Temporary buffers for charactor concatenating, etc...
+  String bitRXdebug = "";
   _processingtime = Efergy_pulseIn(_rxpin, HIGH, 5000); //Returns unsigned long - 5 millisecond timeout
   if (_processingtime > 480UL ) {
 	//If the High Pulse is greater than 450uS - this is the start of a packet
 	_startcom = true;
 	_incomingtime[0] = _processingtime;
+	
 	p = 1;
-	if (_debug) { eflog("Sb",true); }
+	if (_debug > 2) { bitRXdebug = "Sb"; }
 	//Process individual bits in this loop - store array of packet times in incomingtime[]
 	while ( _startcom ) {
 	  _processingtime = Efergy_pulseIn(_rxpin, HIGH, 600); //Returns unsigned long - 300uS timeout
 	  if ( _processingtime == 0 ) { //With An Active Signal we will basically never timeout
-		if (_debug) { eflog("T",false); }
-		if (_debug) { prevlength = p; } //Store this packet length in prevlength for debugging
+		if (_debug > 2) { bitRXdebug += "T";}
 		RESET_PKT();
 	  } else if ( _processingtime > 480UL ) {
 		//Start of new packet - reset if part of the way through - helps with interference
 		_incomingtime[0] = _processingtime;
 		p = 1;
-	  } else if (_processingtime > 20 ) {
+	  } else if (_processingtime > 10 ) {
 		_incomingtime[p] = _processingtime; //Save time of each subsequent bit received
 		p++;
+		if (_debug > 2) { bitRXdebug += "b"; }
 		//If packet has been received (67 bits) - mark it to be processed
-		if (_debug) { eflog("b",false); }
 		if (p > limit) {
 		  // If our length is longer than our buffer - then reset
 		  _startcom = false;
-		  if (_debug) { prevlength = p; } //Store this packet length in prevlength for debugging
 		  yield();  // Yield ASAP as we are receiving a mess of information - give some time back
 		  flag = true;  // Flag set for complete packet received
-		  if (_debug) { eflog("E",false); }
+		  if (_debug > 2) { bitRXdebug += "E"; }
 		}
 		//end of limit if
+	  } else {
+		  if (_debug > 2) { bitRXdebug += "X";}
 	  }
 	  //end of proctime > 30
 	}
@@ -314,15 +319,16 @@ bool efergy::mainloop() {
 	  }
 	} else {
 	  //We failed the Checksum test on an 8 byte Packet
+      if (_debug) { eflog("Received Data failed Checksum - or incomplete packet",true); }
 	  flag = false;
-	  if (_debug) {
-		eflog("Received Data failed Checksum - or incomplete packet",true);
-		Serial.print("CS");
-		Serial_BitTimes(limit);
-		Serial_RAW(_bytearray);
-	  }
 	  RESET_PKT();
 	}
+    if (_debug) {
+	  Serial.print("\nBit Pattern=");
+	  Serial.println(bitRXdebug);
+	  if (_debug > 4 ) { Serial_BitTimes(limit); }
+	  Serial_RAW(_bytearray);
+    }
   }
   return false;
   // End of FLAG == true Routine
