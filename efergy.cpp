@@ -20,7 +20,6 @@
 
 int _rxpin;
 int _debug;
-//unsigned char _bytearray[8];	  //Stores the decoded 8 byte packet
 bool _startcom = false;		  //True when a packet is in the process of being received
 unsigned long _processingtime;  //needs to be unsigned long to be compatible with PulseIn()
 unsigned long _incomingtime[limit];  //stores processing time for eac
@@ -193,7 +192,7 @@ void efergy::RXdecodeRAW(unsigned long _incomingtime[],unsigned char * _bytearra
 	unsigned char bytedata = 0;
 	for (int k = 1; k < limit; k++) { //Start at 1 because the first bit (0) is our long 500uS start
 		if (_incomingtime[k] != 0) {
-			if (_incomingtime[k] > 20UL ) { //Original Code was 20 - smallest is about 70us - so 40 to be safe with loop overheads
+			if (_incomingtime[k] > 10UL ) { //Original Code was 20 - smallest is about 70us - so 40 to be safe with loop overheads
 				dbit++;
 				bitpos++;
 				bytedata = bytedata << 1;
@@ -342,16 +341,21 @@ bool efergy::mainloop() {
 	  }
 	} else {
 	  //We failed the Checksum test on an 8 byte Packet
-      if (_debug) { eflog("Received Data failed Checksum - or incomplete packet",true); }
-	  flag = false;
-	  RESET_PKT();
+      if (_debug) {
+		  eflog("Received Data failed Checksum - or incomplete packet",true);
+		  Serial_BitTimes(limit);
+	  }
 	}
     if (_debug) {
-	  Serial.print("\nBit Pattern=");
-	  Serial.println(bitRXdebug);
+	  if (_debug > 2 ) {
+	    Serial.print("\nBit Pattern=");
+	    Serial.println(bitRXdebug);
+	  }
 	  if (_debug > 4 ) { Serial_BitTimes(limit); }
 	  Serial_RAW(_bytearray);
     }
+	flag = false;
+	RESET_PKT();
   }
   return false;
   // End of FLAG == true Routine
