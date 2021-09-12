@@ -197,7 +197,7 @@ void efergy::RXdecodeRAW(unsigned long _incomingtime[],unsigned char * _bytearra
 				dbit++;
 				bitpos++;
 				bytedata = bytedata << 1;
-				if (_incomingtime[k] > 85UL) { // 0 is approx 70uS, 1 is approx 140uS
+				if (_incomingtime[k] > 100UL) { // 0 is approx 70uS, 1 is approx 140uS
 					bytedata = bytedata | 0x1;
 				}
 				if (bitpos > 7) {
@@ -270,7 +270,7 @@ bool efergy::mainloop() {
   char tempbuff[60]; //Temporary buffers for charactor concatenating, etc...
   String bitRXdebug = "";
   _processingtime = Efergy_pulseIn(_rxpin, HIGH, 5000); //Returns unsigned long - 5 millisecond timeout
-  if (_processingtime > 480UL ) {
+  if ( _processingtime > 450UL && _processingtime < 580UL ) {
 	//If the High Pulse is greater than 450uS - this is the start of a packet
 	_startcom = true;
 	_incomingtime[0] = _processingtime;
@@ -283,7 +283,7 @@ bool efergy::mainloop() {
 	  if ( _processingtime == 0 ) { //With An Active Signal we will basically never timeout
 		if (_debug > 2) { bitRXdebug += "T";}
 		RESET_PKT();
-	  } else if ( _processingtime > 450UL && _processingtime > 580UL ) {
+	  } else if ( _processingtime > 450UL && _processingtime < 580UL ) {
 		//Start of new packet - reset if part of the way through - helps with interference
 		_incomingtime[0] = _processingtime;
 		p = 1;
