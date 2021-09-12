@@ -54,6 +54,12 @@ void efergy::eflog(const char* LOGMSG, bool nl) {
 	Serial.print(logbuff);
 }
 
+// Routing to Output log messages, nl = new line 1(default=true) 0=append to existing line
+void efergy::eflog(String LOGMSG, bool nl) {
+	char Buf[70];
+    LOGMSG.toCharArray(Buf, 70);
+	eflog(Buf,nl);
+}
 // Wait a while - but loop in a yield to make our time useful
 void efergy::milliswait(unsigned long wait_ms) {
 	unsigned long future = millis() + wait_ms;
@@ -94,10 +100,19 @@ unsigned long efergy::power2 (unsigned char exp1) {
 }
 
 // Decode from the RX packet what the milliAmp current draw is
+bool efergy::RXdecodeMA_valid(unsigned char _bytearray[8]) {
+	unsigned long rxma = ((1000 * ((unsigned long)((_bytearray[4] * 256) + (unsigned long)_bytearray[5]))) / power2(_bytearray[6]));
+	if ( rxma > 100000 ) {
+		return false;  // Return Null if value is invalid/out of range (TEST THIS)
+	} else {
+		return true;  // Return mA (milliamps) of load
+	}
+}
+// Decode from the RX packet what the milliAmp current draw is
 unsigned long efergy::RXdecodeMA(unsigned char _bytearray[8]) {
 	unsigned long rxma = ((1000 * ((unsigned long)((_bytearray[4] * 256) + (unsigned long)_bytearray[5]))) / power2(_bytearray[6]));
 	if ( rxma > 100000 ) {
-		return NULL;  // Return Null if value is invalid/out of range (TEST THIS)
+		return 0;  // Return Null if value is invalid/out of range (TEST THIS)
 	} else {
 		return rxma;  // Return mA (milliamps) of load
 	}
@@ -106,7 +121,10 @@ unsigned long efergy::RXdecodeMA(unsigned char _bytearray[8]) {
 // Decode from the RX pcket what the Wattage is (using a custom voltage provided)
 unsigned long efergy::RXdecodeW(unsigned char _bytearray[8], int volts) {
 	unsigned long rxma = RXdecodeMA(_bytearray);
-	unsigned long rx_watts = ( rxma * volts ) / 1000;
+	unsigned long rx_watts = 0;
+	if (rxma) {
+	  unsigned long rx_watts = ( rxma * volts ) / 1000;
+    }
 	return rx_watts;
 }
 
@@ -173,7 +191,7 @@ void efergy::RXdecodeRAW(unsigned long _incomingtime[],unsigned char * _bytearra
 	int bitpos = 0;
 	_bytecount = 0;
 	unsigned char bytedata = 0;
-	for (int k = 1; k <= limit; k++) { //Start at 1 because the first bit (0) is our long 500uS start
+	for (int k = 1; k < limit; k++) { //Start at 1 because the first bit (0) is our long 500uS start
 		if (_incomingtime[k] != 0) {
 			if (_incomingtime[k] > 20UL ) { //Original Code was 20 - smallest is about 70us - so 40 to be safe with loop overheads
 				dbit++;
@@ -265,7 +283,7 @@ bool efergy::mainloop() {
 	  if ( _processingtime == 0 ) { //With An Active Signal we will basically never timeout
 		if (_debug > 2) { bitRXdebug += "T";}
 		RESET_PKT();
-	  } else if ( _processingtime > 480UL ) {
+	  } else if ( _processingtime > 450UL && _processingtime > 580UL ) {
 		//Start of new packet - reset if part of the way through - helps with interference
 		_incomingtime[0] = _processingtime;
 		p = 1;
@@ -304,8 +322,13 @@ bool efergy::mainloop() {
 	  _eventjson["ts"] = (millis() / 100);
 	  _eventjson["id"] = TXID;
 	  _eventjson["type"] = "RX";
-	  _eventjson["mA"] = RXdecodeMA(_bytearray);
-	  _eventjson["W"] = RXdecodeW(_bytearray, _voltage);
+	  if (RXdecodeMA_valid(_bytearray)) {
+	    _eventjson["mA"] = RXdecodeMA(_bytearray);
+	    _eventjson["W"] = RXdecodeW(_bytearray, _voltage);
+	  } else {
+	    _eventjson["mA"] = 'invalid';
+	    _eventjson["W"] = 'invalid';
+	  }
 	  _eventjson["Int"] = RXdecodeI(_bytearray);
 	  _eventjson["Pair"] = (RXdecodeP(_bytearray) ? "On" : "Off");
 	  _eventjson["Batt"] = (TXbatt ? "OK" : "Low");
