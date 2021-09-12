@@ -7,7 +7,7 @@
 #include "Arduino.h"
 #include <ArduinoJson.h>          // Version 6.x https://github.com/bblanchon/ArduinoJson
 
-#define limit 67      //67 for E2 Classic - bits to Rx from Tx
+#define limit 68      //67 for E2 Classic - bits to Rx from Tx
 #define BUFFERSIZE 4096
 
 class efergy {
@@ -15,6 +15,7 @@ class efergy {
 		efergy(int inputpin, int DEBUG, int volts);
 		void begin(int baudrate);
 		void eflog(const char* LOGMSG, bool nl);
+		void eflog(const String LOGMSG, bool nl);
 		void milliswait(unsigned long wait_ms);
 		StaticJsonDocument<256> getjsonevent();
 		void setID(int id, int depth, unsigned long statusmA, int intervalsecs);
@@ -23,6 +24,7 @@ class efergy {
 		void eventID();
 	private:
 		unsigned long RXdecodeID(unsigned char bytearray[8]);
+		bool RXdecodeMA_valid(unsigned char _bytearray[8]);
 		unsigned long RXdecodeMA(unsigned char bytearray[8]);
 		unsigned long RXdecodeW(unsigned char bytearray[8], int volts);
 		int RXdecodeI(unsigned char bytearray[8]);
